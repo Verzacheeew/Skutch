@@ -1,6 +1,13 @@
 import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 from pytube import YouTube
 
 # Получение токена из переменной окружения или напрямую из кода
@@ -9,30 +16,43 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_BOT_TOKEN:
     TELEGRAM_BOT_TOKEN = "8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q"  # Замените на реальный токен
 
-# Глобальная переменная для хранения ссылки на видео
+# Глобальная переменная для хранения данных пользователей
 user_data = {}
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Отправьте мне ссылку на YouTube-видео.")
+    await update.message.reply_text(
+        "Привет! Отправьте мне ссылку на YouTube-видео."
+    )
 
 # Обработка текстовых сообщений (ссылка на YouTube)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text
+    url = update.message.text.strip()
+
+    # Проверка, является ли ссылка корректной
+    if not (url.startswith("https://www.youtube.com/") or url.startswith("https://youtu.be/")):
+        await update.message.reply_text(
+            "Некорректная ссылка. Пожалуйста, отправьте ссылку на YouTube."
+        )
+        return
+
     try:
+        # Попытка загрузить видео с YouTube
         yt = YouTube(url)
         title = yt.title
         user_data[update.effective_chat.id] = {"url": url, "title": title}
         await update.message.reply_text(f"Видео найдено: {title}")
 
+        # Предлагаем выбрать формат
         keyboard = [
             [InlineKeyboardButton("MP4 (Видео)", callback_data="mp4")],
-            [InlineKeyboardButton("MP3 (Аудио)", callback_data="mp3")]
+            [InlineKeyboardButton("MP3 (Аудио)", callback_data="mp3")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Выберите формат:", reply_markup=reply_markup)
 
     except Exception as e:
+        print(f"Ошибка при обработке ссылки: {e}")
         await update.message.reply_text("Неверная ссылка или видео недоступно.")
 
 # Обработка выбора формата
@@ -48,21 +68,23 @@ async def handle_format_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     user_data[chat_id]["format"] = format_choice
 
     if format_choice == "mp4":
+        # Предлагаем выбрать качество видео
         keyboard = [
             [InlineKeyboardButton("240p", callback_data="240p")],
             [InlineKeyboardButton("360p", callback_data="360p")],
             [InlineKeyboardButton("480p", callback_data="480p")],
             [InlineKeyboardButton("720p", callback_data="720p")],
-            [InlineKeyboardButton("1080p", callback_data="1080p")]
+            [InlineKeyboardButton("1080p", callback_data="1080p")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Выберите качество видео:", reply_markup=reply_markup)
 
     elif format_choice == "mp3":
+        # Предлагаем выбрать битрейт аудио
         keyboard = [
             [InlineKeyboardButton("128 kbps", callback_data="128kbps")],
             [InlineKeyboardButton("192 kbps", callback_data="192kbps")],
-            [InlineKeyboardButton("256 kbps", callback_data="256kbps")]
+            [InlineKeyboardButton("256 kbps", callback_data="256kbps")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Выберите битрейт аудио:", reply_markup=reply_markup)
@@ -86,22 +108,31 @@ async def handle_quality_choice(update: Update, context: ContextTypes.DEFAULT_TY
         yt = YouTube(url)
         if format_choice == "mp4":
             stream = yt.streams.filter(res=choice, file_extension="mp4").first()
+            if not stream:
+                await query.edit_message_text("Выбранное качество недоступно.")
+                return
             file_path = stream.download(output_path="downloads")
             await query.edit_message_text("Видео загружено. Отправляю...")
         elif format_choice == "mp3":
             audio_stream = yt.streams.filter(only_audio=True).first()
+            if not audio_stream:
+                await query.edit_message_text("Аудио недоступно.")
+                return
             file_path = audio_stream.download(output_path="downloads")
             new_file_path = os.path.splitext(file_path)[0] + ".mp3"
             os.rename(file_path, new_file_path)
             file_path = new_file_path
             await query.edit_message_text("Аудио загружено. Отправляю...")
 
+        # Отправляем файл пользователю
         with open(file_path, "rb") as file:
             await context.bot.send_document(chat_id=chat_id, document=file)
 
+        # Удаляем файл после отправки
         os.remove(file_path)
 
     except Exception as e:
+        print(f"Ошибка при скачивании: {e}")
         await query.edit_message_text("Произошла ошибка при скачивании.")
 
 # Основная функция
