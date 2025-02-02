@@ -5,7 +5,7 @@ from pytube import YouTube
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Получение токена из переменной окружения или напрямую из кода
-TELEGRAM_BOT_TOKEN = os.getenv("8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 if not TELEGRAM_BOT_TOKEN:
     TELEGRAM_BOT_TOKEN = "8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q"  # Замените на реальный токен
@@ -116,25 +116,15 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_format_choice, pattern="^(mp4|mp3)$"))
     application.add_handler(CallbackQueryHandler(handle_quality_choice, pattern="^(240p|360p|480p|720p|1080p|128kbps|192kbps|256kbps)$"))
 
-    # Запуск бота в фоновом режиме
-    application.run_polling(stop_signals=None)
-
-# Добавляем HTTP-сервер для Render
-class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b'Bot is running')
-
-def run_http_server():
-    server_address = ('0.0.0.0', int(os.getenv('PORT', 8080)))
-    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
-    print(f"HTTP server running on port {server_address[1]}")
-    httpd.serve_forever()
+    # Настройка webhook
+    port = int(os.getenv('PORT', 8080))
+    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/telegram"
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=TELEGRAM_BOT_TOKEN,
+        webhook_url=webhook_url
+    )
 
 if __name__ == "__main__":
-    import threading
-    # Запускаем HTTP-сервер в отдельном потоке
-    threading.Thread(target=run_http_server, daemon=True).start()
-    # Запускаем бота
-    main()
+    main()ц
