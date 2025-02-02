@@ -3,8 +3,14 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 from pytube import YouTube
 
-# Токен вашего бота
+# Получаем токен из переменной окружения
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if not TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN is not set in environment variables!")
+
+# URL вашего сервиса на Render
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Например: "https://your-service.onrender.com"
 
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -85,8 +91,13 @@ def main():
     app.add_handler(CallbackQueryHandler(button_callback, pattern="^(video|audio)\|"))
     app.add_handler(CallbackQueryHandler(download_media, pattern="^(res|abr)\|"))
 
-    # Запуск бота
-    app.run_polling()
+    # Настройка webhook
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),  # Render предоставляет порт через переменную PORT
+        url_path=TOKEN,
+        webhook_url=f"{WEBHOOK_URL}/{TOKEN}"
+    )
 
 if __name__ == "__main__":
     main()
