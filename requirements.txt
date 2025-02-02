@@ -1,5 +1,2 @@
-# Force reinstall dependencies
-python-telegram-bot
-pytube
-moviepy==2.1.2
-imageio_ffmpeg>=0.6.0
+pytube==15.0.0
+python-telegram-bot==21.10
