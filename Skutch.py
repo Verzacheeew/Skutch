@@ -4,7 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Cal
 from pytube import YouTube
 
 # Получение токена из переменной окружения или напрямую из кода
-8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q = "ваш_токен_бота"  # Замените на реальный токен
+"8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q" = "ваш_токен_бота"  # Замените на реальный токен
 
 # Глобальная переменная для хранения ссылки на видео
 user_data = {}
