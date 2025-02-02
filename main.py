@@ -4,7 +4,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from pytube import YouTube
 
 # Токен вашего бота
-TOKEN = os.getenv("8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q")
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
