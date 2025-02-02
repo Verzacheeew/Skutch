@@ -2,7 +2,6 @@ import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from pytube import YouTube
-from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Получение токена из переменной окружения или напрямую из кода
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -118,7 +117,7 @@ def main():
 
     # Настройка webhook
     port = int(os.getenv('PORT', 8080))
-    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/telegram"
+    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TELEGRAM_BOT_TOKEN}"
     application.run_webhook(
         listen="0.0.0.0",
         port=port,
