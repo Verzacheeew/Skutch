@@ -1,4 +1,4 @@
 # Force reinstall dependencies
 python-telegram-bot
 pytube
-moviepy
+moviepy==2.1.2
