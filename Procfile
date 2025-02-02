@@ -1,1 +1,0 @@
-worker: Skutch.py
