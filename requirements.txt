@@ -2,3 +2,4 @@
 python-telegram-bot
 pytube
 moviepy==2.1.2
+imageio_ffmpeg>=0.6.0
