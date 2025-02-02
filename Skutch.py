@@ -37,8 +37,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        # Используем yt-dlp для получения информации о видео
-        ydl_opts = {}
+        # Используем yt-dlp с cookies для получения информации о видео
+        ydl_opts = {
+            "cookiefile": "config/cookies.txt",  # Путь к файлу cookies
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             title = info.get("title", "Неизвестное видео")
@@ -116,6 +118,7 @@ async def handle_quality_choice(update: Update, context: ContextTypes.DEFAULT_TY
             ydl_opts = {
                 "format": f"bestvideo[height<={choice}]+bestaudio/best[height<={choice}]",
                 "outtmpl": os.path.join(output_path, "%(title)s.%(ext)s"),
+                "cookiefile": "config/cookies.txt",  # Путь к файлу cookies
             }
         elif format_choice == "mp3":
             # Скачиваем аудио
@@ -127,6 +130,7 @@ async def handle_quality_choice(update: Update, context: ContextTypes.DEFAULT_TY
                     "preferredquality": choice.replace("kbps", ""),
                 }],
                 "outtmpl": os.path.join(output_path, "%(title)s.%(ext)s"),
+                "cookiefile": "config/cookies.txt",  # Путь к файлу cookies
             }
 
         # Скачиваем файл
