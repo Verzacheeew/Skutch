@@ -1,10 +1,14 @@
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from pytube import YouTube
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Получение токена из переменной окружения или напрямую из ко
-TELEGRAM_BOT_TOKEN = "8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q"  # Замените на реальный токен# Замените на реальный токен  # Замените на реальный токен
+# Получение токена из переменной окружения или напрямую из кода
+TELEGRAM_BOT_TOKEN = os.getenv("8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q")
+
+if not TELEGRAM_BOT_TOKEN:
+    TELEGRAM_BOT_TOKEN = "8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q"  # Замените на реальный токен
 
 # Глобальная переменная для хранения ссылки на видео
 user_data = {}
@@ -17,13 +21,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text
     try:
-        # Проверяем, является ли ссылка валидной
         yt = YouTube(url)
         title = yt.title
         user_data[update.effective_chat.id] = {"url": url, "title": title}
         await update.message.reply_text(f"Видео найдено: {title}")
 
-        # Предлагаем выбрать формат
         keyboard = [
             [InlineKeyboardButton("MP4 (Видео)", callback_data="mp4")],
             [InlineKeyboardButton("MP3 (Аудио)", callback_data="mp3")]
@@ -47,7 +49,6 @@ async def handle_format_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     user_data[chat_id]["format"] = format_choice
 
     if format_choice == "mp4":
-        # Предлагаем выбрать качество видео
         keyboard = [
             [InlineKeyboardButton("240p", callback_data="240p")],
             [InlineKeyboardButton("360p", callback_data="360p")],
@@ -59,7 +60,6 @@ async def handle_format_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.edit_message_text("Выберите качество видео:", reply_markup=reply_markup)
 
     elif format_choice == "mp3":
-        # Предлагаем выбрать битрейт аудио
         keyboard = [
             [InlineKeyboardButton("128 kbps", callback_data="128kbps")],
             [InlineKeyboardButton("192 kbps", callback_data="192kbps")],
@@ -80,19 +80,16 @@ async def handle_quality_choice(update: Update, context: ContextTypes.DEFAULT_TY
     choice = query.data
     user_data[chat_id]["quality"] = choice
 
-    # Скачиваем видео/аудио
     url = user_data[chat_id]["url"]
     format_choice = user_data[chat_id]["format"]
 
     try:
         yt = YouTube(url)
         if format_choice == "mp4":
-            # Скачиваем видео
             stream = yt.streams.filter(res=choice, file_extension="mp4").first()
             file_path = stream.download(output_path="downloads")
             await query.edit_message_text("Видео загружено. Отправляю...")
         elif format_choice == "mp3":
-            # Скачиваем аудио
             audio_stream = yt.streams.filter(only_audio=True).first()
             file_path = audio_stream.download(output_path="downloads")
             new_file_path = os.path.splitext(file_path)[0] + ".mp3"
@@ -100,11 +97,9 @@ async def handle_quality_choice(update: Update, context: ContextTypes.DEFAULT_TY
             file_path = new_file_path
             await query.edit_message_text("Аудио загружено. Отправляю...")
 
-        # Отправляем файл пользователю
         with open(file_path, "rb") as file:
             await context.bot.send_document(chat_id=chat_id, document=file)
 
-        # Удаляем файл после отправки
         os.remove(file_path)
 
     except Exception as e:
@@ -121,9 +116,25 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_format_choice, pattern="^(mp4|mp3)$"))
     application.add_handler(CallbackQueryHandler(handle_quality_choice, pattern="^(240p|360p|480p|720p|1080p|128kbps|192kbps|256kbps)$"))
 
-    # Запуск бота
-    print("Бот запущен...")
-    application.run_polling()
+    # Запуск бота в фоновом режиме
+    application.run_polling(stop_signals=None)
+
+# Добавляем HTTP-сервер для Render
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'Bot is running')
+
+def run_http_server():
+    server_address = ('0.0.0.0', int(os.getenv('PORT', 8080)))
+    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    print(f"HTTP server running on port {server_address[1]}")
+    httpd.serve_forever()
 
 if __name__ == "__main__":
+    import threading
+    # Запускаем HTTP-сервер в отдельном потоке
+    threading.Thread(target=run_http_server, daemon=True).start()
+    # Запускаем бота
     main()
