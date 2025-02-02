@@ -3,8 +3,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from pytube import YouTube
 
-# Получение токена из переменной окружения или напрямую из кода
-"8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q" = "ваш_токен_бота"  # Замените на реальный токен
+# Получение токена из переменной окружения или напрямую из ко
+TELEGRAM_BOT_TOKEN = "8135335284:AAH3fc_o0GIg-vl7ntCQJ_r16ZUep9Vap0Q"  # Замените на реальный токен# Замените на реальный токен  # Замените на реальный токен
 
 # Глобальная переменная для хранения ссылки на видео
 user_data = {}
