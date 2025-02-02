@@ -8,7 +8,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from pytube import YouTube
+import yt_dlp
 
 # Получение токена из переменной окружения или напрямую из кода
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -37,11 +37,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        # Попытка загрузить видео с YouTube
-        yt = YouTube(url)
-        title = yt.title
-        user_data[update.effective_chat.id] = {"url": url, "title": title}
-        await update.message.reply_text(f"Видео найдено: {title}")
+        # Используем yt-dlp для получения информации о видео
+        ydl_opts = {}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            title = info.get("title", "Неизвестное видео")
+            user_data[update.effective_chat.id] = {"url": url, "title": title}
+            await update.message.reply_text(f"Видео найдено: {title}")
 
         # Предлагаем выбрать формат
         keyboard = [
@@ -105,31 +107,41 @@ async def handle_quality_choice(update: Update, context: ContextTypes.DEFAULT_TY
     format_choice = user_data[chat_id]["format"]
 
     try:
-        yt = YouTube(url)
+        # Настройки для скачивания
+        output_path = "downloads"
+        os.makedirs(output_path, exist_ok=True)
+
         if format_choice == "mp4":
-            stream = yt.streams.filter(res=choice, file_extension="mp4").first()
-            if not stream:
-                await query.edit_message_text("Выбранное качество недоступно.")
-                return
-            file_path = stream.download(output_path="downloads")
-            await query.edit_message_text("Видео загружено. Отправляю...")
+            # Скачиваем видео
+            ydl_opts = {
+                "format": f"bestvideo[height<={choice}]+bestaudio/best[height<={choice}]",
+                "outtmpl": os.path.join(output_path, "%(title)s.%(ext)s"),
+            }
         elif format_choice == "mp3":
-            audio_stream = yt.streams.filter(only_audio=True).first()
-            if not audio_stream:
-                await query.edit_message_text("Аудио недоступно.")
-                return
-            file_path = audio_stream.download(output_path="downloads")
-            new_file_path = os.path.splitext(file_path)[0] + ".mp3"
-            os.rename(file_path, new_file_path)
-            file_path = new_file_path
-            await query.edit_message_text("Аудио загружено. Отправляю...")
+            # Скачиваем аудио
+            ydl_opts = {
+                "format": "bestaudio/best",
+                "postprocessors": [{
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": choice.replace("kbps", ""),
+                }],
+                "outtmpl": os.path.join(output_path, "%(title)s.%(ext)s"),
+            }
+
+        # Скачиваем файл
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(info)
+            if format_choice == "mp3":
+                file_name = os.path.splitext(file_name)[0] + ".mp3"
 
         # Отправляем файл пользователю
-        with open(file_path, "rb") as file:
+        with open(file_name, "rb") as file:
             await context.bot.send_document(chat_id=chat_id, document=file)
 
         # Удаляем файл после отправки
-        os.remove(file_path)
+        os.remove(file_name)
 
     except Exception as e:
         print(f"Ошибка при скачивании: {e}")
